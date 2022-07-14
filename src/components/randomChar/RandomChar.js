@@ -1,49 +1,34 @@
 import React, { useState, useEffect } from "react";
 import "./randomChar.scss";
-import MarvelService from "../../services/MarvelService";
+import useMarvelService from "../../services/MarvelService";
 import mjolnir from "../../resources/img/mjolnir.png";
 import ErrorMessage from "../ErrorMessage/ErrorMessage";
 import Spinner from "../spinner/Spinner";
 import "../spinner/spinner.scss";
+import { CSSTransition, TransitionGroup } from "react-transition-group";
 
 const RandomChar = () => {
-  const marvelService = new MarvelService();
-
-  const [value, setValue] = useState({
-    char: {},
-    loading: true,
-    error: false,
-  });
-
-  const onCharLoading = () => {
-    setValue({ loading: true });
-  };
-
-  const onCharLoaded = (char) => {
-    setValue({ char, loading: false });
-  };
-
-  const onError = () => {
-    setValue({
-      loading: false,
-      error: true,
-    });
-  };
-
-  function updateChar() {
-    const id = Math.floor(Math.random() * (1011400 - 1011000) + 1011000);
-    onCharLoading();
-    marvelService.getCharacter(id).then(onCharLoaded).catch(onError);
-  }
+  const [char, setChar] = useState(null);
+  const { loading, error, getCharacter, clearError } = useMarvelService();
 
   useEffect(() => {
+    clearError();
     updateChar();
   }, []);
 
-  const { char, loading, error } = value;
+  const onCharLoaded = (char) => {
+    setChar(char);
+  };
+
+  const updateChar = () => {
+    const id = Math.floor(Math.random() * (1011400 - 1011000)) + 1011000;
+    clearError();
+    getCharacter(id).then(onCharLoaded);
+  };
+
   const erorrMessage = error ? <ErrorMessage /> : null;
   const spinner = loading ? <Spinner /> : null;
-  const content = !(loading || error) ? <View char={char} /> : null;
+  const content = !(loading || error || !char) ? <View char={char} /> : null;
 
   return (
     <div className="randomchar">
@@ -67,47 +52,52 @@ const RandomChar = () => {
 };
 
 const View = ({ char }) => {
-  function onEmptyDescription(desc) {
+  const { name, description, thumbnail, homepage, wiki } = char;
+  const onEmptyDescription = (desc) => {
     if (desc !== "") {
       return desc;
     } else {
       return (desc = "No description yet.");
     }
-  }
+  };
 
   let style = false;
 
-  function notImg(thumbnail) {
+  const notImg = (thumbnail) => {
     if (thumbnail.includes("image_not_available")) {
       style = true;
       return style, thumbnail;
     }
     return thumbnail;
-  }
-
-  const { name, description, thumbnail, homepage, wiki } = char;
+  };
 
   return (
-    <div className="randomchar__block">
-      <img
-        src={notImg(thumbnail)}
-        alt="Random character"
-        className="randomchar__img"
-        style={style ? { objectFit: "contain" } : { objectFit: "cover" }}
-      />
-      <div className="randomchar__info">
-        <p className="randomchar__name">{name}</p>
-        <p className="randomchar__descr">{onEmptyDescription(description)}</p>
-        <div className="randomchar__btns">
-          <a href={homepage} className="button button__main">
-            <div className="inner">homepage</div>
-          </a>
-          <a href={wiki} className="button button__secondary">
-            <div className="inner">Wiki</div>
-          </a>
+    <TransitionGroup component={null}>
+      <CSSTransition classNames="randomchar__block" timeout={500}>
+        <div className="randomchar__block">
+          <img
+            src={notImg(thumbnail)} 
+            alt="Random character"
+            className="randomchar__img"
+            style={style ? { objectFit: "contain" } : { objectFit: "cover" }}
+          />
+          <div className="randomchar__info">
+            <p className="randomchar__name">{name}</p>
+            <p className="randomchar__descr">
+              {onEmptyDescription(description)}
+            </p>
+            <div className="randomchar__btns">
+              <a href={homepage} className="button button__main">
+                <div className="inner">homepage</div>
+              </a>
+              <a href={wiki} className="button button__secondary">
+                <div className="inner">Wiki</div>
+              </a>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      </CSSTransition>
+    </TransitionGroup>
   );
 };
 

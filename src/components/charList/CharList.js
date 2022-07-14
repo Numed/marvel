@@ -2,33 +2,26 @@ import React, { useState, useEffect } from "react";
 import "./charList.scss";
 import ErrorMessage from "../ErrorMessage/ErrorMessage";
 import Spinner from "../spinner/Spinner";
-import MarvelService from "../../services/MarvelService";
+import useMarvelService from "../../services/MarvelService";
+import { CSSTransition, TransitionGroup } from "react-transition-group";
 
 const CharList = (props) => {
-  const marvelService = new MarvelService();
+  const { loading, error, getAllCharacters, clearError } = useMarvelService();
 
   const [charList, setCharList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
   const [newItemLoading, setNewItemLoading] = useState(false);
   const [offset, setOffset] = useState(210);
   const [charEnded, setCharEnded] = useState(false);
   const [selected, setSelected] = useState(null);
 
   useEffect(() => {
-    onRequest();
+    onRequest(offset, true);
   }, []);
 
-  const onCharListLoading = () => {
-    setNewItemLoading(true);
-  };
-
-  const onRequest = (offset) => {
-    onCharListLoading();
-    marvelService
-      .getAllCharacters(offset)
-      .then(onCharListLoaded)
-      .catch(onError);
+  const onRequest = (offset, initial) => {
+    initial ? setNewItemLoading(false) : setNewItemLoading(true);
+    clearError();
+    getAllCharacters(offset).then(onCharListLoaded);
   };
 
   const onCharListLoaded = (newCharList) => {
@@ -37,19 +30,13 @@ const CharList = (props) => {
       ended = true;
     }
     setCharList((charList) => [...charList, ...newCharList]);
-    setLoading((loading) => false);
     setNewItemLoading((newItemLoading) => false);
     setOffset((offset) => offset + 9);
     setCharEnded((charEnded) => ended);
   };
 
-  const onError = () => {
-    setError(true);
-    setLoading((loading) => false);
-  };
-
   const selectChar = (id) => {
-    if (id != "" || id != null) {
+    if (id !== "" || id !== null) {
       setSelected(id);
     }
   };
@@ -65,42 +52,47 @@ const CharList = (props) => {
       }
 
       return (
-        <li
-          key={item.id}
-          className={
-            selected == item.id
-              ? "char__item char__item_selected"
-              : "char__item"
-          }
-          tabIndex={0}
-          onClick={() => {
-            return props.onCharSelected(item.id), selectChar(item.id);
-          }}
-          onKeyPress={(e) => {
-            if (e.key === " " || e.key === "Enter") {
-              props.onCharSelected(item.id);
+        <CSSTransition key={item.id} classNames="char__item" timeout={300}>
+          <li
+            key={i}
+            className={
+              selected === item.id
+                ? "char__item char__item_selected"
+                : "char__item"
             }
-          }}
-        >
-          <img src={item.thumbnail} alt={item.name} style={imgStyle} />
-          <div className="char__name">{item.name}</div>
-        </li>
+            tabIndex={0}
+            onClick={() => {
+              return props.onCharSelected(item.id), selectChar(item.id);
+            }}
+            onKeyPress={(e) => {
+              if (e.key === " " || e.key === "Enter") {
+                props.onCharSelected(item.id);
+              }
+            }}
+          >
+            <img src={item.thumbnail} alt={item.name} style={imgStyle} />
+            <div className="char__name">{item.name}</div>
+          </li>
+        </CSSTransition>
       );
     });
-    return <ul className="char__grid">{items}</ul>;
+    return (
+      <ul className="char__grid">
+        <TransitionGroup component={null}>{items}</TransitionGroup>
+      </ul>
+    );
   };
 
   const items = View(charList);
 
   const errorMessage = error ? <ErrorMessage /> : null;
-  const spinner = loading ? <Spinner /> : null;
-  const content = !(loading || error) ? items : null;
+  const spinner = loading && !newItemLoading ? <Spinner /> : null;
 
   return (
     <div className="char__list">
       {errorMessage}
       {spinner}
-      {content}
+      {items}
       <button
         className="button button__main button__long"
         onClick={() => onRequest(offset)}

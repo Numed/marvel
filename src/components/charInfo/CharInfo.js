@@ -1,44 +1,32 @@
 import React, { useEffect, useState } from "react";
 import ErrorMessage from "../ErrorMessage/ErrorMessage";
 import Spinner from "../spinner/Spinner";
+import useMarvelService from "../../services/MarvelService";
 import Skeletion from "../skeleton/Skeleton";
 import "./charInfo.scss";
-import MarvelService from "../../services/MarvelService";
+import { NavLink } from "react-router-dom";
 
 const CharInfo = (props) => {
-  const [state, setState] = useState({
-    char: null,
-    loading: false,
-    error: false,
-  });
+  const [char, setChar] = useState(null);
 
-  const marvelService = new MarvelService();
+  const { loading, error, getCharacter, clearError } = useMarvelService();
 
-  const onCharLoading = () => {
-    setState({ loading: true });
-  };
-
-  const onCharLoaded = (char) => {
-    setState({ char, loading: false });
-  };
-
-  const onError = () => {
-    setState({
-      loading: false,
-      error: false,
-    });
-  };
+  useEffect(() => {
+    updateChar();
+  }, [props.charId]);
 
   const updateChar = () => {
     const { charId } = props;
     if (!charId) {
       return;
     }
-    onCharLoading();
-    marvelService.getCharacter(charId).then(onCharLoaded).catch(onError);
+    clearError();
+    getCharacter(charId).then(onCharLoaded);
   };
 
-  const { char, loading, error } = state;
+  const onCharLoaded = (char) => {
+    setChar(char);
+  };
 
   const skeleton = char || loading || error ? null : <Skeletion />;
 
@@ -62,7 +50,6 @@ const CharInfo = (props) => {
 
 const View = ({ char }) => {
   const { name, description, thumbnail, homepage, wiki, comics } = char;
-
   let style = false;
 
   function notImg(thumbnail) {
@@ -74,7 +61,7 @@ const View = ({ char }) => {
   }
 
   function checkDescription(description) {
-    if (description != "") {
+    if (description !== "") {
       return description;
     } else {
       return (description = "There is no description yet.");
@@ -109,7 +96,9 @@ const View = ({ char }) => {
           if (i <= 9) {
             return (
               <li key={i} className="char__comics-item">
-                {item.name}
+                <NavLink to={`/comics/${item.resourceURI.substring(43)}`}>
+                  {item.name}
+                </NavLink>
               </li>
             );
           }
